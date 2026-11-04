@@ -1,12 +1,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """The few SDL3 gamepad functions this extension uses, bound with ctypes.
 
-SDL3 itself is loaded from lib/ next to this file (the release zip bundles it), or from
-the system when lib/ has no copy (Linux and macOS packages of SDL3).
+SDL3 is not bundled. Blender ships its own (on Windows: blender.shared/SDL3.dll next to
+blender.exe), so that copy is used first; a system-installed SDL3 is the fallback.
 """
 
 import ctypes
 import ctypes.util
+import glob
 import os
 import sys
 
@@ -18,23 +19,32 @@ AXIS_MAX = 32767
 
 HINT_BACKGROUND_EVENTS = b"SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS"
 
-_NAMES = {"win32": "SDL3.dll", "darwin": "libSDL3.dylib"}
+_PATTERNS = {"win32": ["SDL3.dll"], "darwin": ["libSDL3*.dylib"]}.get(sys.platform, ["libSDL3.so*"])
 
 
-def _library_path():
-    here = os.path.join(os.path.dirname(__file__), "lib", _NAMES.get(sys.platform, "libSDL3.so.0"))
-    if os.path.exists(here):
-        return here
+def find_library(blender_binary):
+    """Blender's own SDL3, else the system's. None if neither exists."""
+    root = os.path.dirname(os.path.abspath(blender_binary))
+    places = [root,
+              os.path.join(root, "blender.shared"),               # Windows
+              os.path.join(root, "lib"),                          # Linux
+              os.path.join(root, "..", "Resources", "lib"),       # macOS app bundle
+              os.path.join(root, "..", "Frameworks")]
+    for place in places:
+        for pattern in _PATTERNS:
+            hits = sorted(glob.glob(os.path.join(place, pattern)))
+            if hits:
+                return os.path.normpath(hits[0])
     return ctypes.util.find_library("SDL3")
 
 
 class SDL:
     """A loaded SDL3 with typed entry points. Raises OSError if SDL3 can't be found."""
 
-    def __init__(self):
-        path = _library_path()
+    def __init__(self, blender_binary):
+        path = find_library(blender_binary)
         if not path:
-            raise OSError("SDL3 not found: no lib/ copy and none installed on the system")
+            raise OSError("SDL3 not found: this Blender doesn't ship it and none is installed on the system")
         lib = ctypes.CDLL(path)
         self.path = path
 

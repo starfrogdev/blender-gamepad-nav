@@ -10,13 +10,11 @@ website = "https://github.com/starfrogdev/blender-gamepad-nav"
 
 tags = ["3D View", "Camera"]
 
-blender_version_min = "4.2.0"
+# Uses the SDL3 Blender ships; confirmed in 5.2 (older versions not yet checked).
+blender_version_min = "5.2.0"
 
 license = ["SPDX:GPL-3.0-or-later"]
 copyright = ["2026 StarFrog"]
-
-# The release zip bundles SDL3.dll for Windows (x64). Other platforms can use a system SDL3.
-platforms = ["windows-x64"]
 
 [build]
 paths_exclude_pattern = [
@@ -25,6 +23,5 @@ paths_exclude_pattern = [
   "/.github/",
   "/.gitignore",
   "/dist/",
-  "/tools/",
   "*.zip",
 ]

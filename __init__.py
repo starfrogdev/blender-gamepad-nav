@@ -10,8 +10,8 @@ camera when that viewport is looking through it.
   right trigger   sprint, progressive (up to x4)
   left trigger    crawl, progressive (down to x0.2)
 
-Controllers are read through SDL3 (see sdl.py), so PlayStation, Xbox, Switch and most
-other pads work without extra drivers.
+Controllers are read through the SDL3 that ships with Blender (see sdl.py), so
+PlayStation, Xbox, Switch and most other pads work without extra drivers.
 """
 
 import math
@@ -159,7 +159,7 @@ def _tick():
 def _start():
     global _sdl, _running, _last, _next_scan
     if _sdl is None:
-        _sdl = _sdl_module.SDL()
+        _sdl = _sdl_module.SDL(bpy.app.binary_path)
     _sdl.SDL_SetHint(_sdl_module.HINT_BACKGROUND_EVENTS, b"1")   # Blender has the focus, not SDL
     if not _sdl.SDL_Init(_sdl_module.INIT_GAMEPAD):
         raise RuntimeError("SDL_Init failed: " + _sdl.error())

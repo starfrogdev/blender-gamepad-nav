@@ -3,8 +3,9 @@
 Fly Blender's 3D viewport with a game controller: walk through a scene the way you would
 in a game editor, or drive the camera you're looking through.
 
-Controllers are read through [SDL3](https://libsdl.org), so PlayStation, Xbox, Switch and
-most other pads work with no extra drivers or mapping tools.
+Controllers are read through [SDL3](https://libsdl.org), the copy that already ships
+with Blender, so PlayStation, Xbox, Switch and most other pads work with no extra drivers,
+mapping tools or downloads.
 
 ## Controls
 
@@ -32,7 +33,9 @@ The stick dead zone is 15%, so a pad that drifts a little at rest doesn't move t
 
 ## Install
 
-Requires Blender 4.2 or newer. Windows x64 for now.
+Requires Blender 5.2 or newer (the first version it has been checked with; Blender ships
+SDL3, which this uses). Tested on Windows; Linux and macOS should work the same way, and a
+system-installed SDL3 is used if Blender's own can't be found.
 
 1. Download the `.zip` from the [releases](https://github.com/starfrogdev/blender-gamepad-nav/releases).
 2. Blender: **Edit → Preferences → Get Extensions → ⌄ (top right) → Install from Disk…**,
@@ -41,19 +44,13 @@ Requires Blender 4.2 or newer. Windows x64 for now.
 ## Build from source
 
 ```bash
-python tools/fetch_sdl.py
 mkdir dist
 blender --command extension build --output-dir dist
 ```
 
-`fetch_sdl.py` downloads the official SDL3 release for Windows x64, checks its SHA-256,
-and puts `SDL3.dll` in `lib/`. `extension build` makes the installable zip in `dist/`.
-
-On Linux and macOS, install SDL3 from your package manager. The add-on looks for a system
-SDL3 when `lib/` has none. The manifest only lists Windows for now, so you'll need to
-add your platform to it to build.
+That makes the installable zip in `dist/`. There are no dependencies to fetch: the
+extension is plain Python, and it binds SDL3 with `ctypes` (`sdl.py`).
 
 ## Licence
 
-GPL-3.0-or-later (see `LICENSE`), like Blender add-ons in general. Release builds bundle
-SDL3, which is under the zlib licence (`lib/LICENSE-SDL3.txt`).
+GPL-3.0-or-later (see `LICENSE`), like Blender add-ons in general.

@@ -1,5 +1,3 @@
 __pycache__/
 dist/
 *.zip
-# SDL3 is fetched by tools/fetch_sdl.py and bundled into release builds, not committed
-lib/SDL3.dll
