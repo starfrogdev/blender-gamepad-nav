@@ -14,22 +14,49 @@ mapping tools or downloads.
 | Left stick | move: forward/back along where you're looking, strafe left/right |
 | Right stick | look around |
 | Left bumper / right bumper | down / up |
-| Right trigger | sprint, progressive (up to 4×) |
-| Left trigger | crawl, progressive (down to 0.2×) |
+| Right trigger | sprint, progressive (default up to 4×) |
+| Left trigger | crawl, progressive (default down to 0.2×) |
+| Triangle / Y | toggle perspective / orthographic (default mapping) |
 
-Other buttons are not mapped yet.
+In an **orthographic** view the left stick's forward/back **zooms** (a flat view shows no
+forward motion); strafing and up/down pan.
 
-It moves the largest 3D viewport. If that viewport is looking through the scene camera
-(numpad `0`), it moves **the camera** instead. A flat front/side/top view switches to
-perspective as soon as you move.
+If the viewport is looking through the scene camera (numpad `0`), the gamepad moves
+**the camera** instead of the view. It always drives the largest 3D viewport.
 
 ## Use
 
-**Sidebar (`N`) → View → Gamepad → Start.** The panel shows the controller it found, the
-flying speed (m/s) and look speed (°/s), and *Invert look up/down*. The same settings,
-plus *Start automatically*, are in the add-on's preferences.
+**Sidebar (`N`) → View → Gamepad → Start.** The panel shows the controller it found and
+the main speeds; its **Buttons** sub-panel holds the button mappings. Everything is also in
+the add-on's preferences.
 
-The stick dead zone is 15%, so a pad that drifts a little at rest doesn't move the view.
+### Settings
+
+| Setting | Default | |
+| --- | --- | --- |
+| Move speed | 3 m/s | stick pushed all the way |
+| Look speed | 120 °/s | right stick pushed all the way |
+| Invert look up/down | off | |
+| Sprint (right trigger) × | 4 | speed multiplier at full trigger |
+| Crawl (left trigger) × | 0.2 | speed multiplier at full trigger |
+| Stick dead zone | 0.15 | raise it if the view drifts on its own |
+| Start automatically | off | listen for a controller from Blender's start |
+
+### Button mappings
+
+These buttons can each run any Blender action: the four **face buttons**, the **D-pad**,
+**L3** and **R3** (stick clicks), **Select / Share / Back** and **Start / Options**. Face
+buttons are named by position (South = ✕ / A, East = ○ / B, West = □ / X, North = △ / Y),
+which SDL keeps the same on every controller.
+
+Pick a ready-made action (toggle perspective/orthographic, look through camera, frame
+selected / all, front / right / top view, toggle X-ray, play / pause, undo, redo) or
+**Custom operator…** and type any operator, with keyword arguments if it takes them:
+`view3d.view_axis(type='TOP')`, `screen.frame_jump(end=False)`. That's what a Blender
+keybinding runs, so anything you can bind to a key works here. An action fires once per
+press. A mapping that fails shows its error in the Buttons panel; navigation keeps going.
+
+Only North (△ / Y) is mapped by default; the rest do nothing until you set them.
 
 ## Install
 
