@@ -16,7 +16,7 @@ mapping tools or downloads.
 | Left bumper / right bumper | down / up |
 | Right trigger | sprint, progressive (default up to 4×) |
 | Left trigger | crawl, progressive (default down to 0.2×) |
-| Triangle / Y | toggle perspective / orthographic (default mapping) |
+| Face Button North (Triangle / Y) | toggle perspective / orthographic (default mapping) |
 
 In an **orthographic** view the left stick's forward/back **zooms** (a flat view shows no
 forward motion); strafing and up/down pan.
@@ -44,10 +44,21 @@ the add-on's preferences.
 
 ### Button mappings
 
-These buttons can each run any Blender action: the four **face buttons**, the **D-pad**,
-**L3** and **R3** (stick clicks), **Select / Share / Back** and **Start / Options**. Face
-buttons are named by position (South = ✕ / A, East = ○ / B, West = □ / X, North = △ / Y),
-which SDL keeps the same on every controller.
+Twelve buttons can each run any Blender action. They're named
+by position rather than by symbol, so the names hold on every controller; hover a
+button's dropdown to see what it's called on DualSense and Xbox:
+
+| Button | DualSense | Xbox |
+| --- | --- | --- |
+| Face Button North | Triangle | Y |
+| Face Button South | Cross | A |
+| Face Button East | Circle | B |
+| Face Button West | Square | X |
+| D-Pad Up / Down / Left / Right | D-pad | D-pad |
+| Left Thumbstick Button | L3 | LS |
+| Right Thumbstick Button | R3 | RS |
+| Special Left | Create (Share on DualShock 4) | View (Back on Xbox 360) |
+| Special Right | Options | Menu (Start on Xbox 360) |
 
 Pick a ready-made action (toggle perspective/orthographic, look through camera, frame
 selected / all, front / right / top view, toggle X-ray, play / pause, undo, redo) or
@@ -56,7 +67,7 @@ selected / all, front / right / top view, toggle X-ray, play / pause, undo, redo
 keybinding runs, so anything you can bind to a key works here. An action fires once per
 press. A mapping that fails shows its error in the Buttons panel; navigation keeps going.
 
-Only North (△ / Y) is mapped by default; the rest do nothing until you set them.
+Only Face Button North is mapped by default; the rest do nothing until you set them.
 
 ## Install
 

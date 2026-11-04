@@ -9,9 +9,9 @@ camera when that viewport is looking through it.
   right stick     look (turn about world up, tilt)
   left bumper     down             right bumper   up
   right trigger   sprint, progressive        left trigger   crawl, progressive
-  face buttons, D-pad, L3, R3, Select, Start
+  face buttons, D-pad, thumbstick buttons, Special Left / Right
                   any Blender action (operator), set in the add-on's preferences;
-                  Triangle / Y toggles perspective / orthographic by default
+                  Face Button North (Triangle / Y) toggles perspective / orthographic
 
 Controllers are read through the SDL3 that ships with Blender (see sdl.py), so
 PlayStation, Xbox, Switch and most other pads work without extra drivers.
@@ -45,21 +45,25 @@ def _prefs():
 
 # --- button mappings ---------------------------------------------------------------
 
-# (preference key, label, SDL button). Face buttons are named by position, which SDL
-# keeps the same on every pad: South is Cross on PlayStation and A on Xbox.
+# (preference key, label, SDL button, what it's called on DualSense / Xbox). Face buttons
+# are named by position, which SDL keeps the same on every pad.
 BUTTONS = (
-    ("south", "South  (✕ / A)", S.BUTTON_SOUTH),
-    ("east", "East  (○ / B)", S.BUTTON_EAST),
-    ("west", "West  (□ / X)", S.BUTTON_WEST),
-    ("north", "North  (△ / Y)", S.BUTTON_NORTH),
-    ("dpad_up", "D-pad up", S.BUTTON_DPAD_UP),
-    ("dpad_down", "D-pad down", S.BUTTON_DPAD_DOWN),
-    ("dpad_left", "D-pad left", S.BUTTON_DPAD_LEFT),
-    ("dpad_right", "D-pad right", S.BUTTON_DPAD_RIGHT),
-    ("left_stick", "L3  (left stick click)", S.BUTTON_LEFT_STICK),
-    ("right_stick", "R3  (right stick click)", S.BUTTON_RIGHT_STICK),
-    ("back", "Select / Share / Back", S.BUTTON_BACK),
-    ("start", "Start / Options", S.BUTTON_START),
+    ("north", "Face Button North", S.BUTTON_NORTH, "DualSense: Triangle  ·  Xbox: Y"),
+    ("south", "Face Button South", S.BUTTON_SOUTH, "DualSense: Cross  ·  Xbox: A"),
+    ("east", "Face Button East", S.BUTTON_EAST, "DualSense: Circle  ·  Xbox: B"),
+    ("west", "Face Button West", S.BUTTON_WEST, "DualSense: Square  ·  Xbox: X"),
+    ("dpad_up", "D-Pad Up", S.BUTTON_DPAD_UP, "DualSense and Xbox: D-pad up"),
+    ("dpad_down", "D-Pad Down", S.BUTTON_DPAD_DOWN, "DualSense and Xbox: D-pad down"),
+    ("dpad_left", "D-Pad Left", S.BUTTON_DPAD_LEFT, "DualSense and Xbox: D-pad left"),
+    ("dpad_right", "D-Pad Right", S.BUTTON_DPAD_RIGHT, "DualSense and Xbox: D-pad right"),
+    ("left_stick", "Left Thumbstick Button", S.BUTTON_LEFT_STICK,
+     "Pressing the left stick in.  DualSense: L3  ·  Xbox: LS"),
+    ("right_stick", "Right Thumbstick Button", S.BUTTON_RIGHT_STICK,
+     "Pressing the right stick in.  DualSense: R3  ·  Xbox: RS"),
+    ("back", "Special Left", S.BUTTON_BACK,
+     "DualSense: Create (Share on DualShock 4)  ·  Xbox: View (Back on Xbox 360)"),
+    ("start", "Special Right", S.BUTTON_START,
+     "DualSense: Options  ·  Xbox: Menu (Start on Xbox 360)"),
 )
 DEFAULTS = {"north": 'PERSP_ORTHO'}
 
@@ -231,7 +235,7 @@ def _tick():
         return RATE
 
     # Mapped buttons fire once, on the press.
-    for key, _, button in BUTTONS:
+    for key, _, button, _ in BUTTONS:
         if s.SDL_GetGamepadButton(_pad, button):
             if key not in _held:
                 _held.add(key)
@@ -336,7 +340,7 @@ class GAMEPADNAV_Preferences(bpy.types.AddonPreferences):
 
 def _draw_buttons(layout, prefs):
     col = layout.column(align=True)
-    for key, label, _ in BUTTONS:
+    for key, label, _, _ in BUTTONS:
         row = col.row(align=True)
         row.label(text=label)
         row.prop(prefs, "btn_" + key, text="")
@@ -346,12 +350,14 @@ def _draw_buttons(layout, prefs):
         layout.label(text=_last_error, icon='ERROR')
 
 
-# One action and one custom-operator field per mappable button.
-for _key, _label, _ in BUTTONS:
+# One action and one custom-operator field per mappable button. The description is the
+# dropdown's tooltip: what the button is called on the common controllers.
+for _key, _label, _, _names in BUTTONS:
     GAMEPADNAV_Preferences.__annotations__["btn_" + _key] = bpy.props.EnumProperty(
-        name=_label, items=[(a[0], a[1], a[2]) for a in ACTIONS], default=DEFAULTS.get(_key, 'NONE'))
+        name=_label, description=_names,
+        items=[(a[0], a[1], a[2]) for a in ACTIONS], default=DEFAULTS.get(_key, 'NONE'))
     GAMEPADNAV_Preferences.__annotations__["btn_" + _key + "_custom"] = bpy.props.StringProperty(
-        name=_label + " operator", description="Any operator, e.g. view3d.view_axis(type='TOP')")
+        name=_label + " operator", description=_names + ".  Any operator, e.g. view3d.view_axis(type='TOP')")
 
 
 # --- panels ------------------------------------------------------------------------
