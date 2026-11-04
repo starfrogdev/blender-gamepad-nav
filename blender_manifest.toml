@@ -1,0 +1,30 @@
+schema_version = "1.0.0"
+
+id = "gamepad_navigation"
+version = "0.1.0"
+name = "Gamepad Navigation"
+tagline = "Fly the 3D viewport with a game controller"
+maintainer = "StarFrog <captainstarfrog@gmail.com>"
+type = "add-on"
+website = "https://github.com/starfrogdev/blender-gamepad-nav"
+
+tags = ["3D View", "Camera"]
+
+blender_version_min = "4.2.0"
+
+license = ["SPDX:GPL-3.0-or-later"]
+copyright = ["2026 StarFrog"]
+
+# The release zip bundles SDL3.dll for Windows (x64). Other platforms can use a system SDL3.
+platforms = ["windows-x64"]
+
+[build]
+paths_exclude_pattern = [
+  "__pycache__/",
+  "/.git/",
+  "/.github/",
+  "/.gitignore",
+  "/dist/",
+  "/tools/",
+  "*.zip",
+]
