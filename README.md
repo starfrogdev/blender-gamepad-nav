@@ -89,6 +89,22 @@ blender --command extension build --output-dir dist
 That makes the installable zip in `dist/`. There are no dependencies to fetch: the
 extension is plain Python, and it binds SDL3 with `ctypes` (`sdl.py`).
 
+## Releasing
+
+`main` is MIT. The `publish` branch is `main` plus one commit that relicenses it as
+GPL-3.0-or-later (`LICENSE`, the manifest's `license`, the SPDX headers, this README),
+for Blender's extension platform. To release:
+
+```bash
+git checkout publish
+git merge main
+mkdir dist
+blender --command extension build --output-dir dist
+```
+
+Upload that zip to extensions.blender.org. Builds attached to GitHub releases can come
+from either branch.
+
 ## Licence
 
 MIT (see `LICENSE`).
