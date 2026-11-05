@@ -1,20 +1,21 @@
 # SPDX-License-Identifier: MIT
-"""Gamepad Navigation: fly Blender's 3D viewport with a game controller.
+"""Game controller navigation for Blender's 3D viewport.
 
-Sidebar (N) > View > Gamepad > Start. Moves the largest 3D viewport's view, or the scene
-camera when that viewport is looking through it.
+Start it from Sidebar (N) > View > Gamepad. It moves the largest 3D viewport's view or the
+scene camera when that viewport looks through it.
 
-  left stick      move along where the view looks (forward/back, strafe); in an
-                  orthographic view forward/back zooms instead
-  right stick     look (turn about world up, tilt)
+  left stick      move along where the view looks (forward/back and strafe)
+                  An orthographic view zooms on forward/back instead.
+  right stick     look (turn about world up and tilt)
   left bumper     down             right bumper   up
   right trigger   sprint, progressive        left trigger   crawl, progressive
   face buttons, D-pad, thumbstick buttons, Special Left / Right
-                  any Blender action (operator), set in the add-on's preferences;
-                  Face Button North (Triangle / Y) toggles perspective / orthographic
+                  any Blender action (operator), set in the add-on's preferences
+                  Face Button North (Triangle / Y) toggles perspective / orthographic.
 
-Controllers are read through the SDL3 that ships with Blender (see sdl.py), so
-PlayStation, Xbox, Switch and most other pads work without extra drivers.
+Controllers are read through the SDL3 that ships with Blender. PlayStation, Xbox, Switch,
+and most other pads work without extra drivers.
+SEE: sdl.py
 """
 
 import ast
@@ -26,16 +27,16 @@ from mathutils import Matrix, Quaternion, Vector
 
 from . import sdl as S
 
-RATE = 1 / 60
-DEAD_TRIGGER = 0.05
+RATE = 1 / 60        # seconds between controller polls
+DEAD_TRIGGER = 0.05  # trigger travel ignored before sprint or crawl starts
 
-_sdl = None          # the loaded SDL3, on first Start
-_pad = None          # the open gamepad
+_sdl = None          # SDL3 bindings, loaded on the first Start
+_pad = None          # gamepad being read, or None while none is connected
 _pad_name = ""
 _running = False
 _last = 0.0
 _next_scan = 0.0
-_held = set()        # mappable buttons down on the last tick, so an action fires once per press
+_held = set()        # mapped buttons held on the last tick, for firing each action once per press
 _last_error = ""
 
 
@@ -45,8 +46,9 @@ def _prefs():
 
 # --- button mappings ---------------------------------------------------------------
 
-# (preference key, label, SDL button, what it's called on DualSense / Xbox). Face buttons
-# are named by position, which SDL keeps the same on every pad.
+# Mappable buttons as (preference key, label, SDL button, DualSense and Xbox names). Labels
+# name a button by its position rather than its symbol because SDL keeps positions the same
+# on every pad.
 BUTTONS = (
     ("north", "Face Button North", S.BUTTON_NORTH, "DualSense: Triangle  ·  Xbox: Y"),
     ("south", "Face Button South", S.BUTTON_SOUTH, "DualSense: Cross  ·  Xbox: A"),
@@ -65,9 +67,10 @@ BUTTONS = (
     ("start", "Special Right", S.BUTTON_START,
      "DualSense: Options  ·  Xbox: Menu (Start on Xbox 360)"),
 )
-DEFAULTS = {"north": 'PERSP_ORTHO'}
+DEFAULTS = {"north": 'PERSP_ORTHO'}     # buttons mapped out of the box
 
-# Ready-made actions: (enum id, label, operator call). 'CUSTOM' uses the typed operator.
+# Ready-made actions offered for each button, as (enum id, label, operator call). `CUSTOM`
+# runs the operator typed into the button's custom field.
 ACTIONS = (
     ('NONE', "Nothing", ""),
     ('PERSP_ORTHO', "Toggle perspective / orthographic", "view3d.view_persportho"),
@@ -87,12 +90,13 @@ _ACTION_CALL = {a[0]: a[2] for a in ACTIONS}
 
 
 def _parse_call(text):
-    """'view3d.view_axis(type="TOP")' or 'view3d.view_all' -> (('view3d', 'view_axis'), {...})."""
+    """Splits an operator call like `view3d.view_axis(type='TOP')` into its `bpy.ops` path and
+    keyword arguments, as `(('view3d', 'view_axis'), {'type': 'TOP'})`."""
     node = ast.parse(text.strip(), mode="eval").body
     kwargs = {}
     if isinstance(node, ast.Call):
         if node.args:
-            raise ValueError("use keyword arguments, e.g. type='TOP'")
+            raise ValueError("Cannot pass positional arguments to an operator. Use keywords like type='TOP'")
         kwargs = {k.arg: ast.literal_eval(k.value) for k in node.keywords}
         node = node.func
     parts = []
@@ -100,12 +104,12 @@ def _parse_call(text):
         parts.insert(0, node.attr)
         node = node.value
     if not isinstance(node, ast.Name) or len(parts) != 1:
-        raise ValueError("expected an operator like view3d.view_all")
+        raise ValueError("Cannot read this as an operator. Write it like view3d.view_all")
     return (node.id, parts[0]), kwargs
 
 
 def _run_action(key, area):
-    """Run the action mapped to button `key`, in the 3D viewport being flown."""
+    """Runs the action mapped to button `key` in the 3D viewport being flown."""
     global _last_error
     prefs = _prefs()
     action = getattr(prefs, "btn_" + key)
@@ -120,8 +124,8 @@ def _run_action(key, area):
         with bpy.context.temp_override(window=win, screen=win.screen, area=area, region=region):
             op(**kwargs)
         _last_error = ""
-    except Exception as e:                      # a bad mapping must not stop navigation
-        _last_error = "%s: %s" % (call, e)
+    except Exception as e:                      # keeps navigation running when a mapping fails
+        _last_error = "Could not run %s (%s)" % (call, e)
         print("Gamepad Navigation:", _last_error)
 
 
@@ -150,7 +154,8 @@ def _stick(raw):
 
 
 def _shape(x, y, dead):
-    """Radial dead zone, rescaled so motion starts from zero, then a squared response."""
+    """Shapes one stick's reading into flying input with a radial dead zone and a squared
+    response. NOTE: The output is rescaled to start from zero at the dead zone's edge."""
     m = math.hypot(x, y)
     if m < dead:
         return 0.0, 0.0
@@ -167,7 +172,8 @@ def _trigger(raw):
 # --- view --------------------------------------------------------------------------
 
 def _target_view():
-    """The largest 3D viewport in the first window: (area, region_3d)."""
+    """Returns the largest 3D viewport in the first window as `(area, region_3d)`, or
+    `(None, None)` when there is none."""
     best = None
     for win in bpy.context.window_manager.windows:
         for area in win.screen.areas:
@@ -178,15 +184,18 @@ def _target_view():
 
 
 def _turn(rot, yaw, pitch):
-    """Yaw about world up, pitch about the view's own right axis; no flipping over the top."""
+    """Turns view rotation `rot` by `yaw` about world up and `pitch` about its own right axis
+    without flipping over the top."""
     right = rot @ Vector((1, 0, 0))
     q = Quaternion((0, 0, 1), yaw) @ Quaternion(right, pitch) @ rot
-    if abs((q @ Vector((0, 0, -1))).z) > 0.98:   # nearly straight up or down: keep the yaw only
+    if abs((q @ Vector((0, 0, -1))).z) > 0.98:   # drops the pitch when the view nears straight up or down
         q = Quaternion((0, 0, 1), yaw) @ rot
     return q
 
 
 def _fly(rv3d, lx, ly, rx, ry, rise, speed, dt, prefs):
+    """Moves and turns the view in `rv3d`, or the scene camera it looks through, by one tick
+    of stick input."""
     look = math.radians(prefs.look_speed)
     yaw = -rx * look * dt
     pitch = (ry if prefs.invert_look else -ry) * look * dt
@@ -201,7 +210,7 @@ def _fly(rv3d, lx, ly, rx, ry, rise, speed, dt, prefs):
     eye = rv3d.view_location + rot @ Vector((0, 0, rv3d.view_distance))
     rot = _turn(rot, yaw, pitch)
     if rv3d.view_perspective == 'ORTHO':
-        # A flat view shows no forward motion: forward/back zooms, the rest pans.
+        # Zooms on forward/back and pans on the rest because a flat view shows no forward motion.
         rv3d.view_rotation = rot
         pan = (rot @ Vector((1, 0, 0))) * lx + Vector((0, 0, 1)) * rise
         rv3d.view_location = eye - rot @ Vector((0, 0, rv3d.view_distance)) + pan * speed * dt
@@ -214,6 +223,8 @@ def _fly(rv3d, lx, ly, rx, ry, rise, speed, dt, prefs):
 
 
 def _tick():
+    """Polls the controller and flies the view once. Returns the timer's next interval, or
+    None to stop it."""
     global _last, _next_scan
     if not _running:
         return None
@@ -221,10 +232,10 @@ def _tick():
     now = time.perf_counter()
     dt = min(now - _last, 0.1)
     _last = now
-    s.SDL_UpdateGamepads()                      # also notices controllers being plugged in
+    s.SDL_UpdateGamepads()                      # reads the pads and picks up newly plugged-in ones
     if _pad is None or not s.SDL_GamepadConnected(_pad):
         _close_pad()
-        if now >= _next_scan:                   # look for a controller once a second
+        if now >= _next_scan:                   # looks for a controller once a second
             _next_scan = now + 1.0
             _open_first_pad()
         return RATE
@@ -234,7 +245,7 @@ def _tick():
     if rv3d is None:
         return RATE
 
-    # Mapped buttons fire once, on the press.
+    # Fires each mapped action once per press.
     for key, _, button, _ in BUTTONS:
         if s.SDL_GetGamepadButton(_pad, button):
             if key not in _held:
@@ -264,10 +275,11 @@ def _start():
     global _sdl, _running, _last, _next_scan
     if _sdl is None:
         _sdl = S.SDL(bpy.app.binary_path)
-    _sdl.SDL_SetHint(S.HINT_BACKGROUND_EVENTS, b"1")   # Blender has the focus, not SDL
+    _sdl.SDL_SetHint(S.HINT_BACKGROUND_EVENTS, b"1")   # lets SDL read the pad while Blender holds the focus
     if not _sdl.SDL_Init(S.INIT_GAMEPAD):
-        raise RuntimeError("SDL_Init failed: " + _sdl.error())
-    # State is read with SDL_UpdateGamepads; with no event loop, queued events would only pile up.
+        raise RuntimeError("Cannot open the controller subsystem because SDL_Init failed: " + _sdl.error())
+    # Turns off SDL's event queue because nothing drains it. `_tick` reads state with
+    # `SDL_UpdateGamepads` instead.
     _sdl.SDL_SetGamepadEventsEnabled(False)
     _sdl.SDL_SetJoystickEventsEnabled(False)
     _running, _last, _next_scan = True, time.perf_counter(), 0.0
@@ -297,7 +309,7 @@ class GAMEPADNAV_OT_toggle(bpy.types.Operator):
         try:
             _start()
         except (OSError, RuntimeError, AttributeError) as e:
-            self.report({'ERROR'}, "Gamepad Navigation: %s" % e)
+            self.report({'ERROR'}, "Cannot start Gamepad Navigation. %s" % e)
             return {'CANCELLED'}
         return {'FINISHED'}
 
@@ -319,7 +331,7 @@ class GAMEPADNAV_Preferences(bpy.types.AddonPreferences):
                                    description="Speed multiplier with the left trigger fully pressed")
     dead_zone: bpy.props.FloatProperty(name="Stick dead zone", default=0.15, min=0.0, max=0.5,
                                        subtype='FACTOR',
-                                       description="How far a stick must move before it counts; raise it if the view drifts")
+                                       description="How far a stick must move before it counts. Raise it if the view drifts on its own")
     auto_start: bpy.props.BoolProperty(name="Start automatically", default=False,
                                        description="Start listening for a controller when Blender starts")
 
@@ -350,14 +362,14 @@ def _draw_buttons(layout, prefs):
         layout.label(text=_last_error, icon='ERROR')
 
 
-# One action and one custom-operator field per mappable button. The description is the
-# dropdown's tooltip: what the button is called on the common controllers.
+# Adds an action and a custom-operator field for each mappable button. Each dropdown's
+# tooltip names the button on DualSense and Xbox.
 for _key, _label, _, _names in BUTTONS:
     GAMEPADNAV_Preferences.__annotations__["btn_" + _key] = bpy.props.EnumProperty(
         name=_label, description=_names,
         items=[(a[0], a[1], a[2]) for a in ACTIONS], default=DEFAULTS.get(_key, 'NONE'))
     GAMEPADNAV_Preferences.__annotations__["btn_" + _key + "_custom"] = bpy.props.StringProperty(
-        name=_label + " operator", description=_names + ".  Any operator, e.g. view3d.view_axis(type='TOP')")
+        name=_label + " operator", description=_names + ".  Any operator, such as view3d.view_axis(type='TOP')")
 
 
 # --- panels ------------------------------------------------------------------------
@@ -405,7 +417,7 @@ def _auto_start():
         if _prefs().auto_start and not _running:
             _start()
     except (OSError, RuntimeError, AttributeError, KeyError) as e:
-        print("Gamepad Navigation: auto-start failed:", e)
+        print("Gamepad Navigation could not start automatically.", e)
     return None
 
 

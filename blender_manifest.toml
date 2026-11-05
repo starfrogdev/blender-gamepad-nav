@@ -10,7 +10,7 @@ website = "https://github.com/starfrogdev/blender-gamepad-nav"
 
 tags = ["3D View", "Camera"]
 
-# Uses the SDL3 Blender ships; confirmed in 5.2 (older versions not yet checked).
+# Lowest Blender version checked to ship the SDL3 this extension loads.
 blender_version_min = "5.2.0"
 
 license = ["SPDX:MIT"]
