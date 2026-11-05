@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """Gamepad Navigation: fly Blender's 3D viewport with a game controller.
 
 Sidebar (N) > View > Gamepad > Start. Moves the largest 3D viewport's view, or the scene

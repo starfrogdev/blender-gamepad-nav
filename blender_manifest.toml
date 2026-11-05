@@ -13,7 +13,7 @@ tags = ["3D View", "Camera"]
 # Uses the SDL3 Blender ships; confirmed in 5.2 (older versions not yet checked).
 blender_version_min = "5.2.0"
 
-license = ["SPDX:GPL-3.0-or-later"]
+license = ["SPDX:MIT"]
 copyright = ["2026 StarFrog"]
 
 [build]

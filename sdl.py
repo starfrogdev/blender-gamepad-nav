@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: MIT
 """The few SDL3 gamepad functions this extension uses, bound with ctypes.
 
 SDL3 is not bundled. Blender ships its own (on Windows: blender.shared/SDL3.dll next to

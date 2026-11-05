@@ -91,4 +91,8 @@ extension is plain Python, and it binds SDL3 with `ctypes` (`sdl.py`).
 
 ## Licence
 
-GPL-3.0-or-later (see `LICENSE`), like Blender add-ons in general.
+MIT (see `LICENSE`).
+
+The build submitted to Blender's extension platform, which accepts only
+GPL-3.0-or-later add-ons, is the same code under GPL-3.0-or-later: it's made from
+the `publish` branch, which differs from `main` only in its licence files.
