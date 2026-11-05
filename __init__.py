@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: MIT
+
 """Game controller navigation for Blender's 3D viewport.
 
 Start it from Sidebar (N) > View > Gamepad. It moves the largest 3D viewport's view or the
@@ -27,8 +28,12 @@ from mathutils import Matrix, Quaternion, Vector
 
 from . import sdl as S
 
-RATE = 1 / 60        # seconds between controller polls
-DEAD_TRIGGER = 0.05  # trigger travel ignored before sprint or crawl starts
+RATE = 1 / 60                # seconds between controller polls
+MAX_STEP = 0.1               # longest tick counted in seconds, which keeps a stall from jumping the view
+RESCAN_INTERVAL = 1.0        # seconds between looks for a controller while none is connected
+DEAD_TRIGGER = 0.05          # trigger travel ignored before sprint or crawl starts
+PITCH_LIMIT = 0.98           # steepest look allowed, as the vertical part of the look direction
+MIN_ORTHO_DISTANCE = 0.05    # closest an orthographic view may zoom, in metres
 
 _sdl = None          # SDL3 bindings, loaded on the first Start
 _pad = None          # gamepad being read, or None while none is connected
@@ -188,9 +193,14 @@ def _turn(rot, yaw, pitch):
     without flipping over the top."""
     right = rot @ Vector((1, 0, 0))
     q = Quaternion((0, 0, 1), yaw) @ Quaternion(right, pitch) @ rot
-    if abs((q @ Vector((0, 0, -1))).z) > 0.98:   # drops the pitch when the view nears straight up or down
+    if abs((q @ Vector((0, 0, -1))).z) > PITCH_LIMIT:   # drops the pitch when the view nears straight up or down
         q = Quaternion((0, 0, 1), yaw) @ rot
     return q
+
+
+def _move_vector(rot, lx, ly, rise):
+    """Returns the direction to fly for one tick of stick input, before speed and time."""
+    return (rot @ Vector((1, 0, 0))) * lx + (rot @ Vector((0, 0, -1))) * -ly + Vector((0, 0, 1)) * rise
 
 
 def _fly(rv3d, lx, ly, rx, ry, rise, speed, dt, prefs):
@@ -203,7 +213,7 @@ def _fly(rv3d, lx, ly, rx, ry, rise, speed, dt, prefs):
     if cam is not None:
         loc, rot, scale = cam.matrix_world.decompose()
         rot = _turn(rot, yaw, pitch)
-        move = (rot @ Vector((1, 0, 0))) * lx + (rot @ Vector((0, 0, -1))) * -ly + Vector((0, 0, 1)) * rise
+        move = _move_vector(rot, lx, ly, rise)
         cam.matrix_world = Matrix.LocRotScale(loc + move * speed * dt, rot, scale)
         return
     rot = rv3d.view_rotation.copy()
@@ -214,10 +224,9 @@ def _fly(rv3d, lx, ly, rx, ry, rise, speed, dt, prefs):
         rv3d.view_rotation = rot
         pan = (rot @ Vector((1, 0, 0))) * lx + Vector((0, 0, 1)) * rise
         rv3d.view_location = eye - rot @ Vector((0, 0, rv3d.view_distance)) + pan * speed * dt
-        rv3d.view_distance = max(0.05, rv3d.view_distance + ly * speed * dt)
+        rv3d.view_distance = max(MIN_ORTHO_DISTANCE, rv3d.view_distance + ly * speed * dt)
         return
-    move = (rot @ Vector((1, 0, 0))) * lx + (rot @ Vector((0, 0, -1))) * -ly + Vector((0, 0, 1)) * rise
-    eye = eye + move * speed * dt
+    eye = eye + _move_vector(rot, lx, ly, rise) * speed * dt
     rv3d.view_rotation = rot
     rv3d.view_location = eye - rot @ Vector((0, 0, rv3d.view_distance))
 
@@ -230,13 +239,13 @@ def _tick():
         return None
     s = _sdl
     now = time.perf_counter()
-    dt = min(now - _last, 0.1)
+    dt = min(now - _last, MAX_STEP)
     _last = now
     s.SDL_UpdateGamepads()                      # reads the pads and picks up newly plugged-in ones
     if _pad is None or not s.SDL_GamepadConnected(_pad):
         _close_pad()
-        if now >= _next_scan:                   # looks for a controller once a second
-            _next_scan = now + 1.0
+        if now >= _next_scan:
+            _next_scan = now + RESCAN_INTERVAL
             _open_first_pad()
         return RATE
 

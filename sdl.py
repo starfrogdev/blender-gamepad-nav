@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: MIT
+
 """The few SDL3 gamepad functions this extension uses, bound with ctypes.
 
 Loads the SDL3 that ships with Blender, such as blender.shared/SDL3.dll next to blender.exe
