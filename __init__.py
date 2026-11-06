@@ -12,6 +12,7 @@ import math
 import os
 import sys
 import time
+import traceback
 
 import bpy
 from mathutils import Matrix, Quaternion, Vector
@@ -249,6 +250,23 @@ def _fly(rv3d, lx, ly, rx, ry, rise, speed, dt, prefs):
 
 
 def _tick():
+    """Runs `_poll` from the timer and reports an error once instead of letting it stop
+    navigation.
+
+    NOTE: Blender drops a timer for good when its function raises."""
+    global _last_error
+    try:
+        return _poll()
+    except Exception as e:
+        message = "Kept navigating after an error (%s: %s)" % (type(e).__name__, e)
+        if message != _last_error:
+            _last_error = message
+            print("Gamepad Navigation:", message)
+            traceback.print_exc()
+        return RATE
+
+
+def _poll():
     """Polls the controller and flies the view once. Returns the timer's next interval, which
     is `RATE` while a controller is connected and `RESCAN_INTERVAL` while none is, or None to
     stop it."""
@@ -314,7 +332,7 @@ def _start():
     _sdl.SDL_SetJoystickEventsEnabled(False)
     _running, _last = True, time.perf_counter()
     if not bpy.app.timers.is_registered(_tick):
-        bpy.app.timers.register(_tick, first_interval=RATE)
+        bpy.app.timers.register(_tick, first_interval=RATE, persistent=True)   # survives opening a file
 
 
 def _stop():
@@ -462,7 +480,7 @@ def _auto_start():
 def register():
     for c in _classes:
         bpy.utils.register_class(c)
-    bpy.app.timers.register(_auto_start, first_interval=1.0)
+    bpy.app.timers.register(_auto_start, first_interval=1.0, persistent=True)
 
 
 def unregister():
