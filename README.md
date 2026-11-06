@@ -1,6 +1,6 @@
 # Gamepad Navigation in Blender
 
-Fly-cam navigation in Blender's 3D viewport with a gamepad (PlayStation, Xbox, Switch, etc) with no extra drivers or separate special software needed.
+Fly-cam navigation in Blender's 3D viewport with any gamepad (PlayStation, Xbox, Switch, etc) with no extra drivers or separate special software needed.
 
 ![Flying around a scene in Blender with a gamepad](docs/demo.gif)
 
