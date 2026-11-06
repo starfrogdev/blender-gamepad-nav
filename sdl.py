@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 """The few SDL3 gamepad functions this extension uses, bound with ctypes.
 

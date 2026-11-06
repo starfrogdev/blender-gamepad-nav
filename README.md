@@ -41,4 +41,4 @@ This makes the installable zip in `dist/`. The extension is plain Python with no
 
 ## Licence
 
-MIT (see `LICENSE`).
+GPL-3.0-or-later (see `LICENSE`).

@@ -13,7 +13,7 @@ tags = ["3D View", "Camera"]
 # Lowest Blender version checked to ship the SDL3 this extension loads.
 blender_version_min = "5.2.0"
 
-license = ["SPDX:MIT"]
+license = ["SPDX:GPL-3.0-or-later"]
 copyright = ["2026 StarFrog"]
 
 [build]
