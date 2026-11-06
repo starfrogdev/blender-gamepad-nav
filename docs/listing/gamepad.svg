@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- A generic gamepad: no brand symbols, letters, or logos. -->
+  <defs>
+    <mask id="cutouts">
+      <rect width="512" height="512" fill="#fff"/>
+      <g fill="#000">
+        <rect x="137" y="205" width="26" height="78" rx="7"/>
+        <rect x="111" y="231" width="78" height="26" rx="7"/>
+        <circle cx="370" cy="212" r="15"/>
+        <circle cx="403" cy="244" r="15"/>
+        <circle cx="370" cy="276" r="15"/>
+        <circle cx="337" cy="244" r="15"/>
+        <circle cx="206" cy="318" r="30"/>
+        <circle cx="306" cy="318" r="30"/>
+      </g>
+    </mask>
+  </defs>
+  <path mask="url(#cutouts)" fill="#ffffff" d="M160 152 H352 C418 152 452 186 466 246 L488 344 C498 392 470 418 436 412 C410 407 394 390 380 366 L360 334 H152 L132 366 C118 390 102 407 76 412 C42 418 14 392 24 344 L46 246 C60 186 94 152 160 152 Z"/>
+  <g fill="#ffffff">
+    <circle cx="206" cy="318" r="19"/>
+    <circle cx="306" cy="318" r="19"/>
+  </g>
+</svg>
