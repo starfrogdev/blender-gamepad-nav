@@ -1,83 +1,34 @@
-# Gamepad Navigation for Blender
+# Gamepad Navigation in Blender
 
-Fly Blender's 3D viewport with a game controller: walk through a scene the way you would
-in a game editor, or drive the camera you're looking through.
+Navigate Blender's 3D viewport with a gamepad (PlayStation, Xbox, Switch, etc) with no extra drivers or separate special software.
 
-Controllers are read through [SDL3](https://libsdl.org), the copy that already ships
-with Blender, so PlayStation, Xbox, Switch and most other pads work with no extra drivers,
-mapping tools or downloads.
+![Flying around a scene in Blender with a gamepad](docs/demo.gif)
+
+## Install
+
+1. Download the `.zip` from the [releases](https://github.com/starfrogdev/blender-gamepad-nav/releases).
+2. In Blender open **Edit > Preferences > Get Extensions > V (top right) > Install from Disk…** and pick the zip.
+
+NOTE: This add-on requires SDL3 (which appears to be shipped in Blender 5.2).
 
 ## Controls
 
 | Input | Does |
 | --- | --- |
-| Left stick | move: forward/back along where you're looking, strafe left/right |
-| Right stick | look around |
-| Left bumper / right bumper | down / up |
-| Right trigger | sprint, progressive (default up to 4×) |
-| Left trigger | crawl, progressive (default down to 0.2×) |
-| Face Button North (Triangle / Y) | toggle perspective / orthographic (default mapping) |
+| Left stick | moves forward / back and strafes left / right |
+| Right stick | looks around |
+| Bumpers | moves the camera up and down |
+| Right trigger | increases the speed of the camera |
+| Left trigger | reduces the speed of the camera |
+| Face Button North (Triangle / Y) | toggles perspective / orthographic (default mapping) |
 
-In an **orthographic** view the left stick's forward/back **zooms** (a flat view shows no
-forward motion); strafing and up/down pan.
+NOTE: In an **orthographic** view the left stick's forward and back **zoom** because a flat view shows no forward motion. Strafing and moving up and down pan the view.
 
-If the viewport is looking through the scene camera (numpad `0`), the gamepad moves
-**the camera** instead of the view. It always drives the largest 3D viewport.
+The gamepad moves **the camera** instead of the view when the viewport looks through the scene camera (numpad `0`). It drives the largest 3D viewport in Blender's main window.
 
-## Use
+### Customizing button mappings
 
-**Sidebar (`N`) → View → Gamepad → Start.** The panel shows the controller it found and
-the main speeds; its **Buttons** sub-panel holds the button mappings. Everything is also in
-the add-on's preferences.
-
-### Settings
-
-| Setting | Default | |
-| --- | --- | --- |
-| Move speed | 3 m/s | stick pushed all the way |
-| Look speed | 120 °/s | right stick pushed all the way |
-| Invert look up/down | off | |
-| Sprint (right trigger) × | 4 | speed multiplier at full trigger |
-| Crawl (left trigger) × | 0.2 | speed multiplier at full trigger |
-| Stick dead zone | 0.15 | raise it if the view drifts on its own |
-| Start automatically | off | listen for a controller from Blender's start |
-
-### Button mappings
-
-Twelve buttons can each run any Blender action. They're named
-by position rather than by symbol, so the names hold on every controller; hover a
-button's dropdown to see what it's called on DualSense and Xbox:
-
-| Button | DualSense | Xbox |
-| --- | --- | --- |
-| Face Button North | Triangle | Y |
-| Face Button South | Cross | A |
-| Face Button East | Circle | B |
-| Face Button West | Square | X |
-| D-Pad Up / Down / Left / Right | D-pad | D-pad |
-| Left Thumbstick Button | L3 | LS |
-| Right Thumbstick Button | R3 | RS |
-| Special Left | Create (Share on DualShock 4) | View (Back on Xbox 360) |
-| Special Right | Options | Menu (Start on Xbox 360) |
-
-Pick a ready-made action (toggle perspective/orthographic, look through camera, frame
-selected / all, front / right / top view, toggle X-ray, play / pause, undo, redo) or
-**Custom operator…** and type any operator, with keyword arguments if it takes them:
-`view3d.view_axis(type='TOP')`, `screen.frame_jump(end=False)`. That's what a Blender
-keybinding runs, so anything you can bind to a key works here. An action fires once per
-press. A mapping that fails shows its error in the Buttons panel; navigation keeps going.
-
-Only Face Button North is mapped by default; the rest do nothing until you set them.
-
-## Install
-
-Requires Blender 5.2 or newer (the first version it has been checked with; Blender ships
-SDL3, which this uses). Tested on Windows; Linux and macOS should work the same way, and a
-system-installed SDL3 is used if Blender's own can't be found.
-
-1. Download the `.zip` from the [releases](https://github.com/starfrogdev/blender-gamepad-nav/releases).
-2. Blender: **Edit → Preferences → Get Extensions → ⌄ (top right) → Install from Disk…**,
-   pick the zip.
+Each button runs a ready-made action or a **Custom operator…** that you type. A custom operator takes keyword arguments such as `view3d.view_axis(type='TOP')` or `screen.frame_jump(end=False)`. Blender's keybindings run the same operators. Any operator you can bind to a key works here.
 
 ## Build from source
 
@@ -86,29 +37,8 @@ mkdir dist
 blender --command extension build --output-dir dist
 ```
 
-That makes the installable zip in `dist/`. There are no dependencies to fetch: the
-extension is plain Python, and it binds SDL3 with `ctypes` (`sdl.py`).
-
-## Releasing
-
-`main` is MIT. The `publish` branch is `main` plus one commit that relicenses it as
-GPL-3.0-or-later (`LICENSE`, the manifest's `license`, the SPDX headers, this README),
-for Blender's extension platform. To release:
-
-```bash
-git checkout publish
-git merge main
-mkdir dist
-blender --command extension build --output-dir dist
-```
-
-Upload that zip to extensions.blender.org. Builds attached to GitHub releases can come
-from either branch.
+This makes the installable zip in `dist/`. The extension is plain Python with no dependencies to fetch. It binds SDL3 with `ctypes` in `sdl.py`.
 
 ## Licence
 
 MIT (see `LICENSE`).
-
-The build submitted to Blender's extension platform, which accepts only
-GPL-3.0-or-later add-ons, is the same code under GPL-3.0-or-later: it's made from
-the `publish` branch, which differs from `main` only in its licence files.

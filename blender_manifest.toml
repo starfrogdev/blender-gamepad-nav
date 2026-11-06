@@ -23,6 +23,7 @@ paths_exclude_pattern = [
   "/.github/",
   "/.gitignore",
   "/dist/",
+  "/docs/",
   "/RELEASING.md",
   "*.zip",
 ]
