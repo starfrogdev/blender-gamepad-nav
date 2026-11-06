@@ -2,25 +2,15 @@
 
 """Game controller navigation for Blender's 3D viewport.
 
-Start it from Sidebar (N) > View > Gamepad. It moves the largest 3D viewport's view or the
-scene camera when that viewport looks through it.
-
-  left stick      move along where the view looks (forward/back and strafe)
-                  An orthographic view zooms on forward/back instead.
-  right stick     look (turn about world up and tilt)
-  left bumper     down             right bumper   up
-  right trigger   sprint, progressive        left trigger   crawl, progressive
-  face buttons, D-pad, thumbstick buttons, Special Left / Right
-                  any Blender action (operator), set in the add-on's preferences
-                  Face Button North (Triangle / Y) toggles perspective / orthographic.
-
-Controllers are read through the SDL3 that ships with Blender. PlayStation, Xbox, Switch,
-and most other pads work without extra drivers.
-SEE: sdl.py
+Controllers are read through the SDL3 that ships with Blender.
 """
 
 import ast
+import configparser
+import ctypes
 import math
+import os
+import sys
 import time
 
 import bpy
@@ -28,19 +18,26 @@ from mathutils import Matrix, Quaternion, Vector
 
 from . import sdl as S
 
-RATE = 1 / 60                # seconds between controller polls
-MAX_STEP = 0.1               # longest tick counted in seconds, which keeps a stall from jumping the view
-RESCAN_INTERVAL = 1.0        # seconds between looks for a controller while none is connected
-DEAD_TRIGGER = 0.05          # trigger travel ignored before sprint or crawl starts
-PITCH_LIMIT = 0.98           # steepest look allowed, as the vertical part of the look direction
-MIN_ORTHO_DISTANCE = 0.05    # closest an orthographic view may zoom, in metres
+# Tuning values and user settings, kept in settings.ini next to this file.
+# SEE: settings.ini
+_CONFIG = configparser.ConfigParser(interpolation=None)
+_CONFIG.optionxform = str
+if not _CONFIG.read(os.path.join(os.path.dirname(__file__), "settings.ini"), encoding="utf-8"):
+    raise RuntimeError("Cannot load Gamepad Navigation without settings.ini next to __init__.py")
+_TUNING = _CONFIG["tuning"]
+
+RATE = 1 / _TUNING.getfloat("poll_hz")
+MAX_STEP = _TUNING.getfloat("max_step")
+RESCAN_INTERVAL = _TUNING.getfloat("rescan_interval")
+DEAD_TRIGGER = _TUNING.getfloat("dead_trigger")
+PITCH_LIMIT = _TUNING.getfloat("pitch_limit")
+MIN_ORTHO_DISTANCE = _TUNING.getfloat("min_ortho_distance")
 
 _sdl = None          # SDL3 bindings, loaded on the first Start
 _pad = None          # gamepad being read, or None while none is connected
 _pad_name = ""
 _running = False
 _last = 0.0
-_next_scan = 0.0
 _held = set()        # mapped buttons held on the last tick, for firing each action once per press
 _last_error = ""
 
@@ -174,6 +171,26 @@ def _trigger(raw):
     return 0.0 if t < DEAD_TRIGGER else (t - DEAD_TRIGGER) / (1 - DEAD_TRIGGER)
 
 
+if sys.platform == "win32":
+    _user32 = ctypes.WinDLL("user32")
+    _user32.GetForegroundWindow.restype = ctypes.c_void_p
+    _user32.GetWindowThreadProcessId.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulong)]
+    _user32.GetWindowThreadProcessId.restype = ctypes.c_ulong
+
+
+def _blender_has_focus():
+    """Returns whether one of Blender's windows is the app in front. Always True off Windows,
+    where there is no check yet."""
+    if sys.platform != "win32":
+        return True
+    hwnd = _user32.GetForegroundWindow()
+    if not hwnd:
+        return False
+    pid = ctypes.c_ulong(0)
+    _user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+    return pid.value == os.getpid()
+
+
 # --- view --------------------------------------------------------------------------
 
 def _target_view():
@@ -232,9 +249,10 @@ def _fly(rv3d, lx, ly, rx, ry, rise, speed, dt, prefs):
 
 
 def _tick():
-    """Polls the controller and flies the view once. Returns the timer's next interval, or
-    None to stop it."""
-    global _last, _next_scan
+    """Polls the controller and flies the view once. Returns the timer's next interval, which
+    is `RATE` while a controller is connected and `RESCAN_INTERVAL` while none is, or None to
+    stop it."""
+    global _last
     if not _running:
         return None
     s = _sdl
@@ -244,14 +262,17 @@ def _tick():
     s.SDL_UpdateGamepads()                      # reads the pads and picks up newly plugged-in ones
     if _pad is None or not s.SDL_GamepadConnected(_pad):
         _close_pad()
-        if now >= _next_scan:
-            _next_scan = now + RESCAN_INTERVAL
-            _open_first_pad()
-        return RATE
+        _open_first_pad()
+        return RATE if _pad else RESCAN_INTERVAL
 
     prefs = _prefs()
     area, rv3d = _target_view()
     if rv3d is None:
+        return RATE
+
+    if prefs.only_when_focused and not _blender_has_focus():
+        # Marks the buttons held now as already pressed. They don't fire on switching back.
+        _held.update(key for key, _, button, _ in BUTTONS if s.SDL_GetGamepadButton(_pad, button))
         return RATE
 
     # Fires each mapped action once per press.
@@ -281,7 +302,7 @@ def _tick():
 # --- start / stop ------------------------------------------------------------------
 
 def _start():
-    global _sdl, _running, _last, _next_scan
+    global _sdl, _running, _last
     if _sdl is None:
         _sdl = S.SDL(bpy.app.binary_path)
     _sdl.SDL_SetHint(S.HINT_BACKGROUND_EVENTS, b"1")   # lets SDL read the pad while Blender holds the focus
@@ -291,7 +312,7 @@ def _start():
     # `SDL_UpdateGamepads` instead.
     _sdl.SDL_SetGamepadEventsEnabled(False)
     _sdl.SDL_SetJoystickEventsEnabled(False)
-    _running, _last, _next_scan = True, time.perf_counter(), 0.0
+    _running, _last = True, time.perf_counter()
     if not bpy.app.timers.is_registered(_tick):
         bpy.app.timers.register(_tick, first_interval=RATE)
 
@@ -327,22 +348,7 @@ class GAMEPADNAV_OT_toggle(bpy.types.Operator):
 
 class GAMEPADNAV_Preferences(bpy.types.AddonPreferences):
     bl_idname = __package__
-
-    speed: bpy.props.FloatProperty(name="Move speed (m/s)", default=3.0, min=0.05, max=100.0,
-                                   description="Flying speed with the stick pushed all the way")
-    look_speed: bpy.props.FloatProperty(name="Look speed (°/s)", default=120.0, min=10.0, max=720.0,
-                                        description="Turning speed with the right stick pushed all the way")
-    invert_look: bpy.props.BoolProperty(name="Invert look up/down", default=False,
-                                        description="Push the right stick up to look down")
-    sprint: bpy.props.FloatProperty(name="Sprint (right trigger) ×", default=4.0, min=1.0, max=20.0,
-                                    description="Speed multiplier with the right trigger fully pressed")
-    crawl: bpy.props.FloatProperty(name="Crawl (left trigger) ×", default=0.2, min=0.01, max=1.0,
-                                   description="Speed multiplier with the left trigger fully pressed")
-    dead_zone: bpy.props.FloatProperty(name="Stick dead zone", default=0.15, min=0.0, max=0.5,
-                                       subtype='FACTOR',
-                                       description="How far a stick must move before it counts. Raise it if the view drifts on its own")
-    auto_start: bpy.props.BoolProperty(name="Start automatically", default=False,
-                                       description="Start listening for a controller when Blender starts")
+    __annotations__ = {}         # filled from settings.ini and BUTTONS below
 
     def draw(self, context):
         layout = self.layout
@@ -354,6 +360,7 @@ class GAMEPADNAV_Preferences(bpy.types.AddonPreferences):
         col.prop(self, "crawl")
         col.prop(self, "dead_zone")
         col.prop(self, "auto_start")
+        col.prop(self, "only_when_focused")
         layout.separator()
         layout.label(text="Buttons")
         _draw_buttons(layout, self)
@@ -370,6 +377,27 @@ def _draw_buttons(layout, prefs):
     if _last_error:
         layout.label(text=_last_error, icon='ERROR')
 
+
+def _setting_property(section):
+    """Builds the Blender property that one `[setting.<name>]` section of settings.ini describes."""
+    kind = section["type"]
+    kwargs = {"name": section["name"], "description": section.get("description", "")}
+    if kind == "bool":
+        return bpy.props.BoolProperty(default=section.getboolean("default"), **kwargs)
+    if kind == "float":
+        for key in ("min", "max"):
+            if key in section:
+                kwargs[key] = section.getfloat(key)
+        if "subtype" in section:
+            kwargs["subtype"] = section["subtype"]
+        return bpy.props.FloatProperty(default=section.getfloat("default"), **kwargs)
+    raise ValueError("Cannot build setting [%s] of type %r. Use float or bool" % (section.name, kind))
+
+
+# Adds one preference for each [setting.<name>] section, in the file's order.
+for _section in _CONFIG.sections():
+    if _section.startswith("setting."):
+        GAMEPADNAV_Preferences.__annotations__[_section[len("setting."):]] = _setting_property(_CONFIG[_section])
 
 # Adds an action and a custom-operator field for each mappable button. Each dropdown's
 # tooltip names the button on DualSense and Xbox.
@@ -404,6 +432,7 @@ class GAMEPADNAV_PT_panel(bpy.types.Panel):
         col.prop(prefs, "sprint", text="Sprint ×")
         col.prop(prefs, "crawl", text="Crawl ×")
         layout.prop(prefs, "invert_look")
+        layout.prop(prefs, "only_when_focused")
 
 
 class GAMEPADNAV_PT_buttons(bpy.types.Panel):
